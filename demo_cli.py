@@ -10,6 +10,7 @@ import argparse
 import torch
 import sys
 from g2p.train import g2p
+import soundfile as sf
 
 if __name__ == '__main__':
     ## Info & args
@@ -181,7 +182,7 @@ if __name__ == '__main__':
     # Save it on the disk
     fpath = "demo_output_%02d.wav" % num_generated
     print(generated_wav.dtype)
-    librosa.output.write_wav(fpath, generated_wav.astype(np.float32), 
+    sf.write(fpath, generated_wav.astype(np.float32), 
                              synthesizer.sample_rate)
     num_generated += 1
     print("\nSaved output as %s\n\n" % fpath)
