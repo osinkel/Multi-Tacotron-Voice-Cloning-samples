@@ -12,6 +12,7 @@ import torch
 import sys
 from g2p.train import g2p
 import soundfile as sf
+from pydub import AudioSegment
 
 if __name__ == '__main__':
     ## Info & args
@@ -80,51 +81,63 @@ if __name__ == '__main__':
           "an explanation of what is happening.\n")
     
     print("Interactive generation loop")
-    num_generated = 0
     audio_dir = 'audio_for_cloning'
-
+    cloning_voice_dir = 'cloned_voice'
     in_fpaths = [f for f in os.listdir(audio_dir) if os.path.isfile(os.path.join(audio_dir, f))]
 
     texts = {
         'Александр-Коврижных_реклама.mp3': 'Молоко. один из главных продуктов в доме.\nвот почему оно должно быть высшего стандарта.\nтакое молоко производится без консервантов \nпроходит бережную тепловую обработку \nи хранится в особой упаковке с многослойной защитой от света и воздуха. высший стандарт. выбирай молоко с умом. выбирай по высшему стандарту.'
     }
-
+    
     texts_keys = list(texts.keys())
     texts_vals = list(texts.values())
     for in_fpath in in_fpaths:
+        num_generated = 0
+        audio_parts = []
         if in_fpath in texts_keys:
-            preprocessed_wav = encoder.preprocess_wav(in_fpath)
-            # - If the wav is already loaded:
-            original_wav, sampling_rate = librosa.load(in_fpath)
-            preprocessed_wav = encoder.preprocess_wav(original_wav, sampling_rate)
-            print("Loaded file succesfully")
-            embed = encoder.embed_utterance(preprocessed_wav)
-            print("Created the embedding")
-        
-            texts = [args.text]
-            texts = g2p(texts)
-            print(texts)
-            embeds = [embed]
-            specs = synthesizer.synthesize_spectrograms(texts, embeds)
-            spec = specs[0]
-            print("Created the mel spectrogram")
-            ## Generating the waveform
-            print("Synthesizing the waveform:")
-    
-            generated_wav = vocoder.infer_waveform(spec)
-        
-            generated_wav = np.pad(generated_wav, (0, synthesizer.sample_rate), mode="constant")
-    
-             # if not args.no_sound:
-             #     sd.stop()
-             #     sd.play(generated_wav, synthesizer.sample_rate)
-            
-            # Save it on the disk
-            fpath = "demo_output_%02d.wav" % num_generated
-            print(generated_wav.dtype)
-            sf.write(fpath, generated_wav.astype(np.float32), 
-                                 synthesizer.sample_rate)
-            num_generated += 1
-            print("\nSaved output as %s\n\n" % fpath)
-    
+            for text in texts[in_fpath].split('\n'):
+
+                preprocessed_wav = encoder.preprocess_wav(in_fpath)
+                # - If the wav is already loaded:
+                original_wav, sampling_rate = librosa.load(in_fpath)
+                preprocessed_wav = encoder.preprocess_wav(original_wav, sampling_rate)
+                print("Loaded file succesfully")
+                embed = encoder.embed_utterance(preprocessed_wav)
+                print("Created the embedding")
+
+                texts = [args.text]
+                texts = g2p(texts)
+                print(texts)
+                embeds = [embed]
+                specs = synthesizer.synthesize_spectrograms(texts, embeds)
+                spec = specs[0]
+                print("Created the mel spectrogram")
+                ## Generating the waveform
+                print("Synthesizing the waveform:")
+
+                generated_wav = vocoder.infer_waveform(spec)
+
+                generated_wav = np.pad(generated_wav, (0, synthesizer.sample_rate), mode="constant")
+
+                 # if not args.no_sound:
+                 #     sd.stop()
+                 #     sd.play(generated_wav, synthesizer.sample_rate)
+
+                # Save it on the disk
+                fpath = f"{os.path.splitext(in_fpath)[0]}_%02d.wav" % num_generated
+                print(generated_wav.dtype)
+                sf.write(fpath, generated_wav.astype(np.float32), 
+                                     synthesizer.sample_rate)
+                num_generated += 1
+                print("\nSaved output as %s\n\n" % fpath)
+                generated_audio = AudioSegment.from_file(fpath, format="wav")
+                audio_parts.append(generated_audio)
+
+        for audio_part in audio_parts:
+            if combined is None:
+                combined = audio_part
+            else:
+                combined += audio_part
+        result_filename = f"{cloning_voice_dir}/{os.path.splitext(in_fpath)[0]}.wav"
+        combined.export(result_filename, format="wav")
     
