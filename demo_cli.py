@@ -133,6 +133,7 @@ if __name__ == '__main__':
                 generated_audio = AudioSegment.from_file(fpath, format="wav")
                 audio_parts.append(generated_audio)
 
+        combined = None
         for audio_part in audio_parts:
             if combined is None:
                 combined = audio_part
