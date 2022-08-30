@@ -86,7 +86,49 @@ if __name__ == '__main__':
     in_fpaths = [f for f in os.listdir(audio_dir) if os.path.isfile(os.path.join(audio_dir, f))]
 
     texts = {
-        'Александр-Коврижных_реклама.mp3': 'Молоко. один из главных продуктов в доме.\nвот почему оно должно быть высшего стандарта.\nтакое молоко производится без консервантов \nпроходит бережную тепловую обработку \nи хранится в особой упаковке с многослойной защитой от света и воздуха. высший стандарт. выбирай молоко с умом. выбирай по высшему стандарту.'
+        'Александр-Коврижных_реклама.mp3': [
+          'Молоко. один из главных продуктов в доме',
+          'вот почему оно должно быть высшего стандарта',
+          'такое молоко производится без консервантов',
+          'проходит бережную тепловую обработку',
+          'и хранится в особой упаковке',
+          'с многослойной защитой от света и воздуха.',
+          'высший стандарт. выбирай молоко с умом.',
+          'выбирай по высшему стандарту.'
+          ],
+        'Tolokonnikov.mp3': [
+          "если вы ждал повода. вот он.",
+          "нам просто не терпится",
+          "дать вам скидку до двадцати процентов",
+          "на все смартфоны в салонах билайн.",
+          "билайт. просто, удобно, для тебя",
+        ],
+        "gerasimov.mp3":[
+          "вы были в ужасном состоянии, когда вас нашли.",
+          "конечно, я не знал кто вы,"
+          " но в чем дело было понятно.",
+          "тогда могу я вас попросить выручить моего друга.",
+          "он нашёл преступников изобретших странное оружие.",
+          "не просто выживать, поесть, тепло одеться.",
+          "свобода от нищеты лучшая из свобод.",
+        ],
+        "Шитова-Автоответчик.mp3":[
+          "здравствуйте.",
+          "вы позвонили в компанию эфэска лидер.",
+          "для вас на нашем сайте работает онлайн консультант.",
+          "вы можете задать свои вопросы прямо сейчас.",
+          "время работы контакт центра с девяти утра до девяти вечера.",
+          "благодарим за ваше обращение.",
+        ],
+        "ермилова-аудиокнига.mp3": [
+          "меня стала мучать какая-то удивительная тоска.",
+          " мне вдруг показалось что меня, одинокого,",
+          " все покидают и все от меня отступаются. ",
+          "целых три дня мучало меня беспокойство ",
+          "покамест я догадался о причине его. ",
+          "да ведь все они удирают от меня на дачу. ",
+          "фёдор михайлович достоевский"
+        ],
     }
     
     texts_keys = list(texts.keys())
@@ -94,23 +136,24 @@ if __name__ == '__main__':
     for in_fpath in in_fpaths:
         num_generated = 0
         audio_parts = []
-        in_fpath = f'{audio_dir}/{in_fpath}'
+        audio_part_paths = []
+        print(f"check {in_fpath}")
         if in_fpath in texts_keys:
-            for text in texts[in_fpath].split('\n'):
-
-                preprocessed_wav = encoder.preprocess_wav(in_fpath)
+            print(f'cloning voice for {in_fpath}')
+            in_fpath_full = f'{audio_dir}/{in_fpath}'
+            for text in texts[in_fpath]:
+                preprocessed_wav = encoder.preprocess_wav(in_fpath_full)
                 # - If the wav is already loaded:
-                original_wav, sampling_rate = librosa.load(in_fpath)
+                original_wav, sampling_rate = librosa.load(in_fpath_full)
                 preprocessed_wav = encoder.preprocess_wav(original_wav, sampling_rate)
                 print("Loaded file succesfully")
                 embed = encoder.embed_utterance(preprocessed_wav)
                 print("Created the embedding")
 
-                texts = [args.text]
-                texts = g2p(texts)
-                print(texts)
+                text = g2p([text])
+                print(text)
                 embeds = [embed]
-                specs = synthesizer.synthesize_spectrograms(texts, embeds)
+                specs = synthesizer.synthesize_spectrograms(text, embeds)
                 spec = specs[0]
                 print("Created the mel spectrogram")
                 ## Generating the waveform
@@ -120,11 +163,6 @@ if __name__ == '__main__':
 
                 generated_wav = np.pad(generated_wav, (0, synthesizer.sample_rate), mode="constant")
 
-                 # if not args.no_sound:
-                 #     sd.stop()
-                 #     sd.play(generated_wav, synthesizer.sample_rate)
-
-                # Save it on the disk
                 fpath = f"{cloning_voice_dir}/{os.path.splitext(in_fpath)[0]}_%02d.wav" % num_generated
                 print(generated_wav.dtype)
                 sf.write(fpath, generated_wav.astype(np.float32), 
@@ -133,13 +171,15 @@ if __name__ == '__main__':
                 print("\nSaved output as %s\n\n" % fpath)
                 generated_audio = AudioSegment.from_file(fpath, format="wav")
                 audio_parts.append(generated_audio)
-
-        combined = None
-        for audio_part in audio_parts:
-            if combined is None:
-                combined = audio_part
-            else:
-                combined += audio_part
-        result_filename = f"{cloning_voice_dir}/{os.path.splitext(in_fpath)[0]}.wav"
-        combined.export(result_filename, format="wav")
+                audio_part_paths.append(fpath)
+            combined = None
+            for audio_part in audio_parts:
+                if combined is None:
+                    combined = audio_part
+                else:
+                    combined += audio_part
+            result_filename = f"{cloning_voice_dir}/{os.path.splitext(in_fpath)[0]}.wav"
+            combined.export(result_filename, format="wav")
+            for part_path in audio_part_paths:
+              os.remove(part_path)
     
