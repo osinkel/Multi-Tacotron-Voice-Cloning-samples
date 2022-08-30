@@ -94,6 +94,7 @@ if __name__ == '__main__':
     for in_fpath in in_fpaths:
         num_generated = 0
         audio_parts = []
+        in_fpath = f'{audio_dir}/{in_fpath}'
         if in_fpath in texts_keys:
             for text in texts[in_fpath].split('\n'):
 
@@ -124,7 +125,7 @@ if __name__ == '__main__':
                  #     sd.play(generated_wav, synthesizer.sample_rate)
 
                 # Save it on the disk
-                fpath = f"{os.path.splitext(in_fpath)[0]}_%02d.wav" % num_generated
+                fpath = f"{cloning_voice_dir}/{os.path.splitext(in_fpath)[0]}_%02d.wav" % num_generated
                 print(generated_wav.dtype)
                 sf.write(fpath, generated_wav.astype(np.float32), 
                                      synthesizer.sample_rate)
